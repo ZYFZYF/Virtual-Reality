@@ -49,4 +49,8 @@ class Point {
     float getDistance(Point p) {
         return (x - p.x) * (x - p.x) + (y - p.y) * (y - p.y) + (z - p.z) * (z - p.z);
     }
+
+    void describe() {
+        System.out.printf("This point is at (%f, %f, %f)\n", x, y, z);
+    }
 }

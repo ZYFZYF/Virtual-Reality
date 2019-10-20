@@ -5,6 +5,7 @@ import android.opengl.Matrix;
 import java.util.Vector;
 
 public class CameraPosition {
+    private float MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL = 0.1f;
     private Vector<Box> obstacles;
     private float[] translate;
     private Point pos;
@@ -18,6 +19,10 @@ public class CameraPosition {
         Matrix.translateM(translate, 0, -pos.getX(), -pos.getY(), -pos.getZ());
         obstacles = new Vector<>();
         obstacles.addAll(_obstacles);
+        System.out.println(obstacles.size());
+        for (Box box : obstacles) {
+            box.describe();
+        }
     }
 
 
@@ -25,6 +30,7 @@ public class CameraPosition {
         y = 0;//限制人的高度无法改变
         Point point = new Point(pos.getX() + x, pos.getY() + y, pos.getZ() + z);
         if (!collisionDetect(point)) {
+            System.out.printf("Move (%f, %f, %f) successed and now is (%f, %f, %f)\n", x, y, z, point.getX(), point.getY(), point.getZ());
             pos.setX(point.getX());
             pos.setY(point.getY());
             pos.setZ(point.getZ());
@@ -48,6 +54,22 @@ public class CameraPosition {
     }
 
     private boolean collisionDetect(Point p) {
+        for (Box box : obstacles) {
+//            p.describe();
+//            box.describe();
+//            System.out.printf("Their distance is %f\n", Math.pow(Math.min(Math.abs(p.getX() - box.getPos().getX()), Math.abs(p.getX() - (box.getPos().getX() + box.getSize().getX()))), 2) +
+//                    Math.pow(Math.min(Math.abs(p.getZ() - box.getPos().getZ()), Math.abs(p.getZ() - (box.getPos().getZ() + box.getSize().getZ()))), 2));
+            if (p.getX() > box.getPos().getX() - MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL &&
+                    p.getX() < box.getPos().getX() + box.getSize().getX() + MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL &&
+                    p.getZ() > box.getPos().getZ() - MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL &&
+                    p.getZ() < box.getPos().getZ() + box.getSize().getZ() + MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL) {
+                return true;
+            }
+//            if (Math.pow(Math.min(Math.abs(p.getX() - box.getPos().getX()), Math.abs(p.getX() - (box.getPos().getX() + box.getSize().getX()))), 2) +
+//                    Math.pow(Math.min(Math.abs(p.getZ() - box.getPos().getZ()), Math.abs(p.getZ() - (box.getPos().getZ() + box.getSize().getZ()))), 2) < Math.pow(MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL, 2)) {
+//                return true;
+//            }
+        }
         return false;
     }
 }

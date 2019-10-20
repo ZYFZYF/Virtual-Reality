@@ -43,14 +43,14 @@ public class Maze {
         walls = new Vector<>();
         for (int i = 0; i < n + 1; i++) {
             for (int j = 0; j < m; j++) {
-                if (!isOpenHor[i][j]) {
+                if (isHorizontalWall(i, j)) {
                     walls.add(getHorizontalWallPosition(i, j));
                 }
             }
         }
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < m + 1; j++) {
-                if (!isOpenVer[i][j]) {
+                if (isVerticalWall(i, j)) {
                     walls.add(getVerticalWallPosition(i, j));
                 }
             }
@@ -151,6 +151,7 @@ public class Maze {
                 break;
             }
         }
+        isOpenHor[0][m / 2] = true;
         describe();
         generateWalls();
     }
@@ -176,8 +177,9 @@ public class Maze {
     }
 
     Point generateStartPoint() {
-        int r = random.nextInt(n);
-        int c = random.nextInt(m);
-        return new Point(r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH, PEOPLE_HEIGHT, c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
+        int r = random.nextInt(n - 1) + 1;
+        int c = random.nextInt(m - 1) + 1;
+        System.out.printf("Generate grid is (%d, %d) and pos is (%f, %f, %f)\n", r, c, r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, PEOPLE_HEIGHT, c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
+        return new Point(r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, PEOPLE_HEIGHT, c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
     }
 }
