@@ -15,6 +15,7 @@ public class Maze {
     private boolean[][] isOpenHor;
     private boolean[][] isOpenVer;
     private int[] father;
+    private int endR, endC;
     private Vector<Box> walls;
     private Random random;
 
@@ -25,6 +26,8 @@ public class Maze {
         isOpenHor = new boolean[n + 1][m];
         isOpenVer = new boolean[n][m + 1];
         father = new int[n * m];
+        endR = 0;
+        endC = m / 2;
         initMaze();
         random = new Random();
     }
@@ -151,7 +154,7 @@ public class Maze {
                 break;
             }
         }
-        isOpenHor[0][m / 2] = true;
+        isOpenHor[endR][endC] = true;
         describe();
         generateWalls();
     }
@@ -181,5 +184,10 @@ public class Maze {
         int c = random.nextInt(m - 1) + 1;
         System.out.printf("Generate grid is (%d, %d) and pos is (%f, %f, %f)\n", r, c, r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, PEOPLE_HEIGHT, c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
         return new Point(r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, PEOPLE_HEIGHT, c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
+    }
+
+    Plane getEndPointPlane(Texture texture) {
+        return new Plane(new Point(endC * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, WALL_HEIGHT / 2, endR * (WALL_WIDTH + PATH_WIDTH)),
+                new Point(PATH_WIDTH, WALL_HEIGHT, 0), new Point(0, 0, 1), 0, texture);
     }
 }

@@ -31,6 +31,7 @@ import com.google.vr.sdk.base.HeadTransform;
 import com.google.vr.sdk.base.Viewport;
 
 import java.io.IOException;
+import java.util.Vector;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
@@ -95,8 +96,8 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     private int objectUvParam;
     private int objectModelViewProjectionParam;
 
-    private TexturedMesh wall, floor;
-    private Texture wallTex, floorTex;
+    private TexturedMesh wall, floor, square;
+    private Texture wallTex, floorTex, yesTex, noTex, ceilTex;
 
     private float[] camera;
     private float[] view;
@@ -105,7 +106,6 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     private float[] modelView;
     private float[] perspective;
 
-    private float[] modelRoom;
     private float[] modelFloor;
     private float[][][] modelHorizontalWall;
     private float[][][] modelVerticalWall;
@@ -119,6 +119,8 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
 
     private Maze maze;
     private CameraPosition cameraPosition;
+
+    private Vector<Plane> planes;
 
     /**
      * Sets the view to our GvrView and initializes the transformation matrices we will use
@@ -136,7 +138,6 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         modelView = new float[16];
         headRotation = new float[4];
         headDirection = new float[4];
-        modelRoom = new float[16];
         headView = new float[16];
         maze = new Maze(MAZE_HEIGHT, MAZE_WIDTH);
         cameraPosition = new CameraPosition(maze.generateStartPoint(), maze.getWalls());
@@ -161,7 +162,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
                 Matrix.scaleM(modelVerticalWall[i][j], 0, box.getSize().getX(), box.getSize().getY(), box.getSize().getZ());
             }
         }
-
+        planes = new Vector<>();
         // Initialize 3D audio engine.
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
 
@@ -233,9 +234,6 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
 
         Util.checkGlError("Object program params");
 
-        Matrix.setIdentityM(modelRoom, 0);
-        Matrix.translateM(modelRoom, 0, 0, FLOOR_HEIGHT, 0);
-
         // Avoid any delays during start-up due to decoding of sound files.
 //        new Thread(
 //                new Runnable() {
@@ -263,11 +261,17 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         try {
             wall = new TexturedMesh(this, "cube.obj", objectPositionParam, objectUvParam);
             floor = new TexturedMesh(this, "floor.obj", objectPositionParam, objectUvParam);
+            square = new TexturedMesh(this, "square.obj", objectPositionParam, objectUvParam);
             wallTex = new Texture(this, "wall3.png");
             floorTex = new Texture(this, "floor.png");
+            yesTex = new Texture(this, "yes.png");
+            noTex = new Texture(this, "no.png");
+            ceilTex = new Texture(this, "ceil.png");
         } catch (IOException e) {
             Log.e(TAG, "Unable to initialize objects", e);
         }
+        //planes.add(new Plane(new Point(0f, 0.5f, 0f), new Point(0.5f, 1.0f, 1.0f), new Point(0, 0, -1.0f), 90, yesTex));
+        planes.add(maze.getEndPointPlane(yesTex));
         // curTargetObject = random.nextInt(TARGET_MESH_COUNT);
     }
 
@@ -344,6 +348,10 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         }
         drawObject(floor, floorTex, modelFloor, 0);
 
+        for (Plane plane : planes) {
+            drawPlane(plane);
+        }
+
     }
 
     @Override
@@ -351,13 +359,28 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     }
 
     private void drawObject(TexturedMesh texturedMesh, Texture texture, float[] modelTarget, int offset) {
-        Matrix.multiplyMM(modelView, 0, view, 0, modelTarget, 0);
-        Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, offset);
+        Matrix.multiplyMM(modelView, 0, view, 0, modelTarget, offset);
+        Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
         GLES20.glUseProgram(objectProgram);
         GLES20.glUniformMatrix4fv(objectModelViewProjectionParam, 1, false, modelViewProjection, 0);
         texture.bind();
         texturedMesh.draw();
         Util.checkGlError("drawObject");
+    }
+
+    private void drawPlane(Plane plane) {
+        float[] modelTarget = new float[16];
+        Matrix.setIdentityM(modelTarget, 0);
+        Matrix.translateM(modelTarget, 0, plane.getCenter().getX(), plane.getCenter().getY(), plane.getCenter().getZ());
+        Matrix.rotateM(modelTarget, 0, plane.getRotateDegree(), plane.getRotateDirection().getX(), plane.getRotateDirection().getY(), plane.getRotateDirection().getZ());
+        Matrix.scaleM(modelTarget, 0, plane.getSize().getX(), plane.getSize().getY(), plane.getSize().getZ());
+        Matrix.multiplyMM(modelView, 0, view, 0, modelTarget, 0);
+        Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
+        GLES20.glUseProgram(objectProgram);
+        GLES20.glUniformMatrix4fv(objectModelViewProjectionParam, 1, false, modelViewProjection, 0);
+        plane.getTexture().bind();
+        square.draw();
+        Util.checkGlError("drawPlane");
     }
 
     /**
@@ -379,11 +402,9 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     public boolean dispatchTouchEvent(MotionEvent ev) {
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                //System.out.println("I get click start");
                 isMoving = true;
                 break;
             case MotionEvent.ACTION_UP:
-                //System.out.println("I get click end");
                 isMoving = false;
                 break;
         }
