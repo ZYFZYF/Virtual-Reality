@@ -89,6 +89,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
                     "  gl_FragColor = texture2D(u_Texture, vec2(v_UV.x, 1.0 - v_UV.y));",
                     "}",
             };
+    private long lastClickTimeMillis = 0;
     private boolean isMoving = false;
     private int objectProgram;
 
@@ -396,6 +397,12 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
 //            hideTarget();
 //        }
         //triggerCnt++;
+        long nowTimeMillis = System.currentTimeMillis();
+        if (nowTimeMillis - lastClickTimeMillis < 300) {
+            System.out.println("you double clicked me");
+        }
+        //System.out.printf("click time is %d\n", nowTimeMillis);
+        lastClickTimeMillis = nowTimeMillis;
     }
 
     @Override
