@@ -72,4 +72,13 @@ public class CameraPosition {
         }
         return false;
     }
+
+    int getNowRow() {
+        return (int) Math.floor(pos.getZ() / (Maze.WALL_WIDTH + Maze.PATH_WIDTH));
+    }
+
+    int getNowCol() {
+        return (int) Math.floor(pos.getX() / (Maze.WALL_WIDTH + Maze.PATH_WIDTH));
+
+    }
 }

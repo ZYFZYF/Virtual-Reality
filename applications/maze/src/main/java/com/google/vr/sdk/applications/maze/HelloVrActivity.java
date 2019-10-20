@@ -50,6 +50,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     private static final int MAZE_WIDTH = 8;
     private static final int MAZE_HEIGHT = 6;
     private static final float STEP_LENGTH = 0.01f;
+    private static final long DOUBLE_CLICK_INTERVAL_LIMIT = 300;
 
     private static final float Z_NEAR = 0.01f;
     private static final float Z_FAR = 10.0f;
@@ -265,7 +266,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
             square = new TexturedMesh(this, "square.obj", objectPositionParam, objectUvParam);
             wallTex = new Texture(this, "wall3.png");
             floorTex = new Texture(this, "floor.png");
-            yesTex = new Texture(this, "yes.png");
+            yesTex = new Texture(this, "yes2.png");
             noTex = new Texture(this, "no.png");
             ceilTex = new Texture(this, "ceil.png");
         } catch (IOException e) {
@@ -302,7 +303,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         // Build the camera matrix and apply it to the ModelView.
         // System.out.printf("is moving = %d, peopleposition is (%f, %f, %f)\n", isMoving ? 1 : 0, peoplePosition[0], peoplePosition[1], peoplePosition[2]);
         // System.out.printf("head direction is (%f, %f, %f)\n", headDirection[0], headDirection[1], headDirection[2]);
-        if (isMoving) {
+        if (isMoving && System.currentTimeMillis() - lastClickTimeMillis > DOUBLE_CLICK_INTERVAL_LIMIT) {
             cameraPosition.move(headDirection[0] * STEP_LENGTH, headDirection[1] * STEP_LENGTH, headDirection[2] * STEP_LENGTH);
         }
         Matrix.setLookAtM(camera, 0, 0, 0, 0, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f);
@@ -329,6 +330,8 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     public void onDrawEye(Eye eye) {
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
+        GLES20.glEnable(GLES20.GL_BLEND);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         Matrix.multiplyMM(view, 0, eye.getEyeView(), 0, camera, 0);
         perspective = eye.getPerspective(Z_NEAR, Z_FAR);
         cameraPosition.translateTarget(view, 0);
@@ -336,6 +339,8 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
             for (int j = 0; j < MAZE_WIDTH; j++) {
                 if (maze.isHorizontalWall(i, j)) {
                     drawObject(wall, wallTex, modelHorizontalWall[i][j], 0);
+                } else if (maze.isHorizontalMark(i, j)) {
+                    drawObject(wall, noTex, modelHorizontalWall[i][j], 0);
                 }
             }
         }
@@ -344,9 +349,12 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
             for (int j = 0; j < MAZE_WIDTH + 1; j++) {
                 if (maze.isVerticalWall(i, j)) {
                     drawObject(wall, wallTex, modelVerticalWall[i][j], 0);
+                } else if (maze.isVerticalMark(i, j)) {
+                    drawObject(wall, noTex, modelVerticalWall[i][j], 0);
                 }
             }
         }
+
         drawObject(floor, floorTex, modelFloor, 0);
 
         for (Plane plane : planes) {
@@ -398,11 +406,33 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
 //        }
         //triggerCnt++;
         long nowTimeMillis = System.currentTimeMillis();
-        if (nowTimeMillis - lastClickTimeMillis < 300) {
+        if (nowTimeMillis - lastClickTimeMillis < DOUBLE_CLICK_INTERVAL_LIMIT) {
             System.out.println("you double clicked me");
+            createWarningPlane();
         }
         //System.out.printf("click time is %d\n", nowTimeMillis);
         lastClickTimeMillis = nowTimeMillis;
+    }
+
+    private void createWarningPlane() {
+        int r = cameraPosition.getNowRow();
+        int c = cameraPosition.getNowCol();
+        System.out.printf("now pos is (%d, %d)\n", r, c);
+        float dx = headDirection[0];
+        float dz = headDirection[2];
+        if (Math.abs(dx) > Math.abs(dz)) {
+            if (dx < 0) {
+                maze.updateVerticalMark(r, c);
+            } else {
+                maze.updateVerticalMark(r, c + 1);
+            }
+        } else {
+            if (dz < 0) {
+                maze.updateHorizontalMark(r, c);
+            } else {
+                maze.updateHorizontalMark(r + 1, c);
+            }
+        }
     }
 
     @Override
