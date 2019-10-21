@@ -5,7 +5,7 @@ import java.util.Vector;
 
 public class Maze {
     static final float WALL_WIDTH = 0.2f;
-    static final float PATH_WIDTH = 0.5f;
+    static final float PATH_WIDTH = 0.7f;
     static final float WALL_HEIGHT = 1f;
     private static final float PEOPLE_HEIGHT = 0.7f;
     private final int n;
@@ -187,11 +187,10 @@ public class Maze {
     }
 
     Point generateStartPoint() {
-        int r = endR;
-        int c = endC;
-        //int r = random.nextInt(n - 1) + 1;
-        //int c = random.nextInt(m - 1) + 1;
-        //System.out.printf("Generate grid is (%d, %d) and pos is (%f, %f, %f)\n", r, c, r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, PEOPLE_HEIGHT, c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
+        //int r = endR;
+        //int c = endC;
+        int r = random.nextInt(n - 1) + 1;
+        int c = random.nextInt(m - 1) + 1;
         return new Point(c * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5f * PATH_WIDTH, PEOPLE_HEIGHT, r * (WALL_WIDTH + PATH_WIDTH) + WALL_WIDTH + 0.5F * PATH_WIDTH);
     }
 
@@ -201,10 +200,10 @@ public class Maze {
     }
 
     //打标记必须保证两边都有实墙
-    boolean updateHorizontalMark(int r, int c) {
+    int updateHorizontalMark(int r, int c) {
         System.out.printf("you are trying to mark horizontal (%d, %d)\n", r, c);
         if (r < 0 || r > n || c < 0 || c >= m) {
-            return false;
+            return 0;
         } else {
             System.out.printf("ver (%d, %d) = %d, hor (%d, %d) = %d, hor (%d, %d) = %d, hor(%d, %d) = %d, hor(%d, %d) = %d\n",
                     r, c, isHorizontalWall(r, c) ? 1 : 0, r, c, isVerticalWall(r, c) ? 1 : 0, r, c + 1, isVerticalWall(r, c + 1) ? 1 : 0,
@@ -215,18 +214,21 @@ public class Maze {
                             (r > 0 && isVerticalWall(r - 1, c) && isVerticalWall(r - 1, c + 1))))) {
                 isMarkedHor[r][c] = !isMarkedHor[r][c];
                 System.out.printf("successed and isMarkedHoe[%d][%d] is %d\n", r, c, isMarkedHor[r][c] ? 1 : 0);
-
-                return true;
+                if (isMarkedHor[r][c]) {
+                    return 1;
+                } else {
+                    return 2;
+                }
             } else {
-                return false;
+                return 0;
             }
         }
     }
 
-    boolean updateVerticalMark(int r, int c) {
+    int updateVerticalMark(int r, int c) {
         System.out.printf("you are trying to mark vertical (%d, %d)\n", r, c);
         if (r < 0 || r >= n || c < 0 || c > m) {
-            return false;
+            return 0;
         } else {
             System.out.printf("ver (%d, %d) = %d, hor (%d, %d) = %d, hor (%d, %d) = %d, hor(%d, %d) = %d, hor(%d, %d) = %d\n",
                     r, c, isVerticalWall(r, c) ? 1 : 0, r, c, isHorizontalWall(r, c) ? 1 : 0, r + 1, c, isHorizontalWall(r + 1, c) ? 1 : 0,
@@ -236,9 +238,13 @@ public class Maze {
                             (c > 0 && isHorizontalWall(r, c - 1) && isHorizontalWall(r + 1, c - 1)))) {
                 isMarkedVer[r][c] = !isMarkedVer[r][c];
                 System.out.printf("successed and isMarkedVer[%d][%d] is %d\n", r, c, isMarkedVer[r][c] ? 1 : 0);
-                return true;
+                if (isMarkedVer[r][c]) {
+                    return 1;
+                } else {
+                    return 2;
+                }
             } else {
-                return false;
+                return 0;
             }
         }
     }

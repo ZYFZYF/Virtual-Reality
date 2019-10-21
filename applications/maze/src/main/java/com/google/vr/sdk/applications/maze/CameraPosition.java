@@ -5,7 +5,7 @@ import android.opengl.Matrix;
 import java.util.Vector;
 
 public class CameraPosition {
-    private float MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL = 0.1f;
+    private float MIN_DISTANCE_BETWEEN_PEOPLE_AND_WALL = 0.2f;
     private Vector<Box> obstacles;
     private float[] translate;
     private Point pos;
@@ -26,7 +26,7 @@ public class CameraPosition {
     }
 
 
-    void move(float x, float y, float z) {
+    boolean move(float x, float y, float z) {
         y = 0;//限制人的高度无法改变
         Point point = new Point(pos.getX() + x, pos.getY() + y, pos.getZ() + z);
         if (!collisionDetect(point)) {
@@ -35,6 +35,9 @@ public class CameraPosition {
             pos.setY(point.getY());
             pos.setZ(point.getZ());
             Matrix.translateM(translate, 0, -x, -y, -z);
+            return true;
+        } else {
+            return false;
         }
     }
 
