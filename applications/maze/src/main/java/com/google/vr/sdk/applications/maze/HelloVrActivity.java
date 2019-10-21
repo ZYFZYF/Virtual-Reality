@@ -361,9 +361,6 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
             for (int j = 0; j < MAZE_WIDTH; j++) {
                 if (maze.isHorizontalWall(i, j)) {
                     drawObject(wall, wallTex, modelHorizontalWall[i][j], 0);
-                } else if (maze.isHorizontalMark(i, j)) {
-                    System.out.printf("build horizontal mark (%d, %d)\n", i, j);
-                    drawObject(square_xy, noTex, modelHorizontalMark[i][j], 0);
                 }
             }
         }
@@ -372,9 +369,6 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
             for (int j = 0; j < MAZE_WIDTH + 1; j++) {
                 if (maze.isVerticalWall(i, j)) {
                     drawObject(wall, wallTex, modelVerticalWall[i][j], 0);
-                } else if (maze.isVerticalMark(i, j)) {
-                    System.out.printf("build vertical mark (%d, %d)\n", i, j);
-                    drawObject(square_yz, noTex, modelVerticalMark[i][j], 0);
                 }
             }
         }
@@ -386,6 +380,23 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
             drawPlane(plane);
         }
 
+        for (int i = 0; i < MAZE_HEIGHT + 1; i++) {
+            for (int j = 0; j < MAZE_WIDTH; j++) {
+                if (maze.isHorizontalMark(i, j)) {
+                    System.out.printf("build horizontal mark (%d, %d)\n", i, j);
+                    drawObject(square_xy, noTex, modelHorizontalMark[i][j], 0);
+                }
+            }
+        }
+
+        for (int i = 0; i < MAZE_HEIGHT; i++) {
+            for (int j = 0; j < MAZE_WIDTH + 1; j++) {
+                if (maze.isVerticalMark(i, j)) {
+                    System.out.printf("build vertical mark (%d, %d)\n", i, j);
+                    drawObject(square_yz, noTex, modelVerticalMark[i][j], 0);
+                }
+            }
+        }
     }
 
     @Override
