@@ -98,7 +98,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     private int objectUvParam;
     private int objectModelViewProjectionParam;
 
-    private TexturedMesh wall, floor, square;
+    private TexturedMesh wall, floor, square_xy, square_yz;
     private Texture wallTex, floorTex, yesTex, noTex, ceilTex;
 
     private float[] camera;
@@ -108,9 +108,12 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
     private float[] modelView;
     private float[] perspective;
 
+    private float[] modelCeil;
     private float[] modelFloor;
     private float[][][] modelHorizontalWall;
     private float[][][] modelVerticalWall;
+    private float[][][] modelHorizontalMark;
+    private float[][][] modelVerticalMark;
 
     private float[] headRotation;
     private float[] headDirection;
@@ -145,14 +148,27 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         cameraPosition = new CameraPosition(maze.generateStartPoint(), maze.getWalls());
         modelHorizontalWall = new float[MAZE_HEIGHT + 1][MAZE_WIDTH][16];
         modelVerticalWall = new float[MAZE_HEIGHT][MAZE_WIDTH + 1][16];
+        modelHorizontalMark = new float[MAZE_HEIGHT + 1][MAZE_WIDTH][16];
+        modelVerticalMark = new float[MAZE_HEIGHT][MAZE_WIDTH + 1][16];
         modelFloor = new float[16];
         Matrix.setIdentityM(modelFloor, 0);
+        Matrix.scaleM(modelFloor, 0, 200, 1, 200);
+        modelCeil = new float[16];
+        Matrix.setIdentityM(modelCeil, 0);
+        Point maxPoint = maze.getMaxPoint();
+        Matrix.translateM(modelCeil, 0, maxPoint.getX() / 2, Maze.WALL_HEIGHT, maxPoint.getZ() / 2);
+        Matrix.scaleM(modelCeil, 0, maxPoint.getX(), 0, maxPoint.getZ());
         for (int i = 0; i < MAZE_HEIGHT + 1; i++) {
             for (int j = 0; j < MAZE_WIDTH; j++) {
                 Box box = maze.getHorizontalWallPosition(i, j);
                 Matrix.setIdentityM(modelHorizontalWall[i][j], 0);
                 Matrix.translateM(modelHorizontalWall[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
                 Matrix.scaleM(modelHorizontalWall[i][j], 0, box.getSize().getX(), box.getSize().getY(), box.getSize().getZ());
+
+                Matrix.setIdentityM(modelHorizontalMark[i][j], 0);
+                Matrix.translateM(modelHorizontalMark[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
+                Matrix.rotateM(modelHorizontalMark[i][j], 0, 0, 0, 0, 1);
+                Matrix.scaleM(modelHorizontalMark[i][j], 0, box.getSize().getX(), box.getSize().getY(), 0);
             }
         }
 
@@ -162,6 +178,11 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
                 Matrix.setIdentityM(modelVerticalWall[i][j], 0);
                 Matrix.translateM(modelVerticalWall[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
                 Matrix.scaleM(modelVerticalWall[i][j], 0, box.getSize().getX(), box.getSize().getY(), box.getSize().getZ());
+
+                Matrix.setIdentityM(modelVerticalMark[i][j], 0);
+                Matrix.translateM(modelVerticalMark[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
+                //Matrix.rotateM(modelVerticalMark[i][j], 0, 90, 0, 1, 0);
+                Matrix.scaleM(modelVerticalMark[i][j], 0, 0, box.getSize().getY(), box.getSize().getZ());
             }
         }
         planes = new Vector<>();
@@ -263,11 +284,12 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         try {
             wall = new TexturedMesh(this, "cube.obj", objectPositionParam, objectUvParam);
             floor = new TexturedMesh(this, "floor.obj", objectPositionParam, objectUvParam);
-            square = new TexturedMesh(this, "square.obj", objectPositionParam, objectUvParam);
-            wallTex = new Texture(this, "wall3.png");
-            floorTex = new Texture(this, "floor.png");
-            yesTex = new Texture(this, "yes2.png");
-            noTex = new Texture(this, "no.png");
+            square_xy = new TexturedMesh(this, "square_xy.obj", objectPositionParam, objectUvParam);
+            square_yz = new TexturedMesh(this, "square_yz.obj", objectPositionParam, objectUvParam);
+            wallTex = new Texture(this, "wall4.png");
+            floorTex = new Texture(this, "floor2.png");
+            yesTex = new Texture(this, "tick.png");
+            noTex = new Texture(this, "cross.png");
             ceilTex = new Texture(this, "ceil.png");
         } catch (IOException e) {
             Log.e(TAG, "Unable to initialize objects", e);
@@ -331,7 +353,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         GLES20.glEnable(GLES20.GL_DEPTH_TEST);
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
         GLES20.glEnable(GLES20.GL_BLEND);
-        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         Matrix.multiplyMM(view, 0, eye.getEyeView(), 0, camera, 0);
         perspective = eye.getPerspective(Z_NEAR, Z_FAR);
         cameraPosition.translateTarget(view, 0);
@@ -340,7 +362,8 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
                 if (maze.isHorizontalWall(i, j)) {
                     drawObject(wall, wallTex, modelHorizontalWall[i][j], 0);
                 } else if (maze.isHorizontalMark(i, j)) {
-                    drawObject(wall, noTex, modelHorizontalWall[i][j], 0);
+                    System.out.printf("build horizontal mark (%d, %d)\n", i, j);
+                    drawObject(square_xy, noTex, modelHorizontalMark[i][j], 0);
                 }
             }
         }
@@ -350,12 +373,14 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
                 if (maze.isVerticalWall(i, j)) {
                     drawObject(wall, wallTex, modelVerticalWall[i][j], 0);
                 } else if (maze.isVerticalMark(i, j)) {
-                    drawObject(wall, noTex, modelVerticalWall[i][j], 0);
+                    System.out.printf("build vertical mark (%d, %d)\n", i, j);
+                    drawObject(square_yz, noTex, modelVerticalMark[i][j], 0);
                 }
             }
         }
 
         drawObject(floor, floorTex, modelFloor, 0);
+        drawObject(floor, ceilTex, modelCeil, 0);
 
         for (Plane plane : planes) {
             drawPlane(plane);
@@ -388,7 +413,7 @@ public class HelloVrActivity extends GvrActivity implements GvrView.StereoRender
         GLES20.glUseProgram(objectProgram);
         GLES20.glUniformMatrix4fv(objectModelViewProjectionParam, 1, false, modelViewProjection, 0);
         plane.getTexture().bind();
-        square.draw();
+        square_xy.draw();
         Util.checkGlError("drawPlane");
     }
 
