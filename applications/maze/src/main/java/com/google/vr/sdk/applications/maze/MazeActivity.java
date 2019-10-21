@@ -32,6 +32,7 @@ import com.google.vr.sdk.base.HeadTransform;
 import com.google.vr.sdk.base.Viewport;
 
 import java.io.IOException;
+import java.util.Random;
 import java.util.Vector;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -47,26 +48,18 @@ import javax.microedition.khronos.egl.EGLConfig;
  */
 public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer {
     private static final String TAG = "MazeActivity";
-
-    private static final int MAZE_WIDTH = 8;
-    private static final int MAZE_HEIGHT = 8;
     private static final float STEP_LENGTH = 0.01f;
     private static final long DOUBLE_CLICK_INTERVAL_LIMIT = 300;
-
     private static final float Z_NEAR = 0.01f;
     private static final float Z_FAR = 10.0f;
-
     private static final String OBJECT_SOUND_FILE = "audio/bgm64.ogg";
     private static final String BUILD_SUCCESS = "audio/build_success.mp3";
     private static final String BUILD_FAIL = "audio/build_fail2.mp3";
     private static final String FINAL_SUCCESS = "audio/final_success.mp3";
     private static final String SUCCESS_SOUND_FILE = "audio/build_fail.mp3";
     private static final String COLLIDE_WALL = "audio/wall.mp3";
-
     private static final float FLOOR_HEIGHT = -2.0f;
-
     private static final float ANGLE_LIMIT = 0.2f;
-
     // The maximum yaw and pitch of the target object, in degrees. After hiding the target, its
     // yaw will be within [-MAX_YAW, MAX_YAW] and pitch will be within [-MAX_PITCH, MAX_PITCH].
     private static final float MAX_YAW = 100.0f;
@@ -95,6 +88,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
                     "  gl_FragColor = texture2D(u_Texture, vec2(v_UV.x, 1.0 - v_UV.y));",
                     "}",
             };
+    private static int MAZE_WIDTH = 4;
+    private static int MAZE_HEIGHT = 4;
     private long lastClickTimeMillis = 0;
     private long lastCollideTimeMillis = 0;
     private boolean isMoving = false;
@@ -145,7 +140,18 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         super.onCreate(savedInstanceState);
 
         initializeGvrView();
+        initGame();
 
+
+    }
+
+    void initGame() {
+        if (success) {
+            Random random = new Random();
+            MAZE_HEIGHT += random.nextInt(2) + 1;
+            MAZE_WIDTH += random.nextInt(2) + 1;
+        }
+        success = false;
         camera = new float[16];
         view = new float[16];
         modelViewProjection = new float[16];
@@ -194,11 +200,15 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
                 Matrix.scaleM(modelVerticalMark[i][j], 0, 0, box.getSize().getY(), box.getSize().getZ());
             }
         }
-        planes = new Vector<>();
+
         // Initialize 3D audio engine.
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
 
         testLoopPlayer();
+        planes = new Vector<>();
+        if (yesTex != null) {
+            planes.add(maze.getEndPointPlane(yesTex));
+        }
 
     }
 
@@ -251,6 +261,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
 
     @Override
     public void onPause() {
+        mPlayer.pause();
         gvrAudioEngine.pause();
         super.onPause();
     }
@@ -259,6 +270,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     public void onResume() {
         super.onResume();
         gvrAudioEngine.resume();
+        mPlayer.start();
     }
 
     @Override
@@ -324,8 +336,9 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         } catch (IOException e) {
             Log.e(TAG, "Unable to initialize objects", e);
         }
-
-        planes.add(maze.getEndPointPlane(yesTex));
+        if (planes.isEmpty()) {
+            planes.add(maze.getEndPointPlane(yesTex));
+        }
     }
 
     /**
@@ -370,6 +383,12 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
             successSourceId = gvrAudioEngine.createStereoSound(FINAL_SUCCESS);
             gvrAudioEngine.playSound(successSourceId, false /* looping disabled */);
             success = true;
+            try {
+                Thread.sleep(4000);
+            } catch (java.lang.InterruptedException e) {
+                Log.e(TAG, "Interupted by someone", e);
+            }
+            initGame();
         }
     }
 
