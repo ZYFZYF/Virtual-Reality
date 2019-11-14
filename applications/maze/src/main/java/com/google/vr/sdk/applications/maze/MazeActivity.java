@@ -118,6 +118,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
 
     private float[][][] hrir_l;
     private float[][][] hrir_r;
+    private float[] mosquito_l;
+    private float[] mosquito_r;
 
 
     private float[] headRotation;
@@ -225,6 +227,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     }
 
     private void initAudio() {
+        //读取hrir数据和mosquito数据
         hrir_l = new float[25][50][100];
         hrir_r = new float[25][50][100];
         try {
@@ -246,11 +249,25 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
                     }
                 }
             }
+            bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.mosquito_l)));
+            strNums = bufferedReader.readLine().split("\\s");
+            mosquito_l = new float[strNums.length];
+            for (int i = 0; i < strNums.length; i++) {
+                mosquito_l[i] = Float.parseFloat(strNums[i]);
+            }
 
+            bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.mosquito_r)));
+            strNums = bufferedReader.readLine().split("\\s");
+            mosquito_r = new float[strNums.length];
+            for (int i = 0; i < strNums.length; i++) {
+                mosquito_r[i] = Float.parseFloat(strNums[i]);
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+
     }
+
 
     @Override
     public void onPause() {
