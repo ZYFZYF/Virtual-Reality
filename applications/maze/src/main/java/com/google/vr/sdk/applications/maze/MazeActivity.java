@@ -16,7 +16,6 @@
 
 package com.google.vr.sdk.applications.maze;
 
-import android.media.MediaPlayer;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Bundle;
@@ -33,7 +32,7 @@ import com.google.vr.sdk.base.Viewport;
 
 import java.io.IOException;
 import java.util.Random;
-import java.util.Vector;
+import java.util.Scanner;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
@@ -100,8 +99,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private int objectUvParam;
     private int objectModelViewProjectionParam;
 
-    private TexturedMesh wall, floor, square_xy, square_yz;
-    private Texture wallTex, floorTex, yesTex, noTex, ceilTex;
+    private TexturedMesh wall, floor, mosquito;
+    private Texture wallTex, floorTex, ceilTex, mosquitoTex;
 
     private float[] camera;
     private float[] view;
@@ -112,12 +111,13 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
 
     private float[] modelCeil;
     private float[] modelFloor;
+    private float[] modelMosquito;
     private float[][][] modelHorizontalWall;
     private float[][][] modelVerticalWall;
-    private float[][][] modelHorizontalMark;
-    private float[][][] modelVerticalMark;
-    private MediaPlayer mPlayer, mNextPlayer;
-    private int mPlayResId = R.raw.bgm1;
+
+    private float[][][] hrir_l;
+    private float[][][] hrir_r;
+
 
     private float[] headRotation;
     private float[] headDirection;
@@ -129,7 +129,6 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private Maze maze;
     private CameraPosition cameraPosition;
 
-    private Vector<Plane> planes;
 
     /**
      * Sets the view to our GvrView and initializes the transformation matrices we will use
@@ -141,11 +140,10 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
 
         initializeGvrView();
         initGame();
-
-
+        initAudio();
     }
 
-    void initGame() {
+    private void initGame() {
         if (success) {
             Random random = new Random();
             MAZE_HEIGHT += random.nextInt(2) + 1;
@@ -163,8 +161,6 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         cameraPosition = new CameraPosition(maze.generateStartPoint(), maze.getWalls());
         modelHorizontalWall = new float[MAZE_HEIGHT + 1][MAZE_WIDTH][16];
         modelVerticalWall = new float[MAZE_HEIGHT][MAZE_WIDTH + 1][16];
-        modelHorizontalMark = new float[MAZE_HEIGHT + 1][MAZE_WIDTH][16];
-        modelVerticalMark = new float[MAZE_HEIGHT][MAZE_WIDTH + 1][16];
         modelFloor = new float[16];
         Matrix.setIdentityM(modelFloor, 0);
         Matrix.scaleM(modelFloor, 0, 200, 1, 200);
@@ -173,17 +169,19 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         Point maxPoint = maze.getMaxPoint();
         Matrix.translateM(modelCeil, 0, maxPoint.getX() / 2, Maze.WALL_HEIGHT, maxPoint.getZ() / 2);
         Matrix.scaleM(modelCeil, 0, maxPoint.getX(), 0, maxPoint.getZ());
+        modelMosquito = new float[16];
+        Matrix.setIdentityM(modelMosquito, 0);
+        Point mosquitoPosition = maze.generateStartPoint();
+        Matrix.translateM(modelMosquito, 0, mosquitoPosition.getX(), mosquitoPosition.getY() - 0.15f, mosquitoPosition.getZ());
+        Matrix.rotateM(modelMosquito, 0, 270, 1, 0, 0);
+        Matrix.scaleM(modelMosquito, 0, 0.02f, 0.02f, 0.02f);
+
         for (int i = 0; i < MAZE_HEIGHT + 1; i++) {
             for (int j = 0; j < MAZE_WIDTH; j++) {
                 Box box = maze.getHorizontalWallPosition(i, j);
                 Matrix.setIdentityM(modelHorizontalWall[i][j], 0);
                 Matrix.translateM(modelHorizontalWall[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
                 Matrix.scaleM(modelHorizontalWall[i][j], 0, box.getSize().getX(), box.getSize().getY(), box.getSize().getZ());
-
-                Matrix.setIdentityM(modelHorizontalMark[i][j], 0);
-                Matrix.translateM(modelHorizontalMark[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
-                Matrix.rotateM(modelHorizontalMark[i][j], 0, 0, 0, 0, 1);
-                Matrix.scaleM(modelHorizontalMark[i][j], 0, box.getSize().getX(), box.getSize().getY(), 0);
             }
         }
 
@@ -193,48 +191,14 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
                 Matrix.setIdentityM(modelVerticalWall[i][j], 0);
                 Matrix.translateM(modelVerticalWall[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
                 Matrix.scaleM(modelVerticalWall[i][j], 0, box.getSize().getX(), box.getSize().getY(), box.getSize().getZ());
-
-                Matrix.setIdentityM(modelVerticalMark[i][j], 0);
-                Matrix.translateM(modelVerticalMark[i][j], 0, box.getPos().getX() + box.getSize().getX() * 0.5f, box.getPos().getY() + box.getSize().getY() * 0.5f, box.getPos().getZ() + box.getSize().getZ() * 0.5f);
-                //Matrix.rotateM(modelVerticalMark[i][j], 0, 90, 0, 1, 0);
-                Matrix.scaleM(modelVerticalMark[i][j], 0, 0, box.getSize().getY(), box.getSize().getZ());
             }
         }
 
         // Initialize 3D audio engine.
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
 
-        testLoopPlayer();
-        planes = new Vector<>();
-        if (yesTex != null) {
-            planes.add(maze.getEndPointPlane(yesTex));
-        }
-
     }
 
-    public void testLoopPlayer() {
-        mPlayer = MediaPlayer.create(this, mPlayResId);
-        mPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mediaPlayer) {
-                mPlayer.start();
-            }
-        });
-        createNextMediaPlayer();
-    }
-
-    private void createNextMediaPlayer() {
-        mNextPlayer = MediaPlayer.create(this, mPlayResId);
-        mPlayer.setNextMediaPlayer(mNextPlayer);
-        mPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-            @Override
-            public void onCompletion(MediaPlayer mp) {
-                mp.release();
-                mPlayer = mNextPlayer;
-                createNextMediaPlayer();
-            }
-        });
-    }
 
     private void initializeGvrView() {
         setContentView(R.layout.common_ui);
@@ -259,9 +223,33 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         setGvrView(gvrView);
     }
 
+    private void initAudio() {
+        hrir_l = new float[25][50][100];
+        hrir_r = new float[25][50][100];
+        long s = System.currentTimeMillis();
+        Scanner scanner = new Scanner(getResources().openRawResource(R.raw.hrir_l));
+        for (int k = 0; k < 100; k++) {
+            for (int j = 0; j < 50; j++) {
+                for (int i = 0; i < 25; i++) {
+                    hrir_l[i][j][k] = scanner.nextFloat();
+                }
+            }
+        }
+        scanner = new Scanner(getResources().openRawResource(R.raw.hrir_r));
+        for (int k = 0; k < 100; k++) {
+            for (int j = 0; j < 50; j++) {
+                for (int i = 0; i < 25; i++) {
+                    hrir_r[i][j][k] = scanner.nextFloat();
+                }
+            }
+        }
+        long t = System.currentTimeMillis();
+        long d = t - s;
+
+    }
+
     @Override
     public void onPause() {
-        mPlayer.pause();
         gvrAudioEngine.pause();
         super.onPause();
     }
@@ -270,7 +258,6 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     public void onResume() {
         super.onResume();
         gvrAudioEngine.resume();
-        mPlayer.start();
     }
 
     @Override
@@ -326,18 +313,14 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         try {
             wall = new TexturedMesh(this, "cube.obj", objectPositionParam, objectUvParam);
             floor = new TexturedMesh(this, "floor.obj", objectPositionParam, objectUvParam);
-            square_xy = new TexturedMesh(this, "square_xy.obj", objectPositionParam, objectUvParam);
-            square_yz = new TexturedMesh(this, "square_yz.obj", objectPositionParam, objectUvParam);
+            mosquito = new TexturedMesh(this, "mosquito.obj", objectPositionParam, objectUvParam);
+
             wallTex = new Texture(this, "wall4.png");
             floorTex = new Texture(this, "floor2.png");
-            yesTex = new Texture(this, "tick.png");
-            noTex = new Texture(this, "cross.png");
             ceilTex = new Texture(this, "ceil.png");
+            mosquitoTex = new Texture(this, "black.png");
         } catch (IOException e) {
             Log.e(TAG, "Unable to initialize objects", e);
-        }
-        if (planes.isEmpty()) {
-            planes.add(maze.getEndPointPlane(yesTex));
         }
     }
 
@@ -377,9 +360,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         checkSuccess();
     }
 
-    void checkSuccess() {
+    private void checkSuccess() {
         if (cameraPosition.getPos().getZ() < 0 && !success) {
-            mPlayer.pause();
             successSourceId = gvrAudioEngine.createStereoSound(FINAL_SUCCESS);
             gvrAudioEngine.playSound(successSourceId, false /* looping disabled */);
             success = true;
@@ -424,28 +406,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
 
         drawObject(floor, floorTex, modelFloor, 0);
         drawObject(floor, ceilTex, modelCeil, 0);
+        drawObject(mosquito, mosquitoTex, modelMosquito, 0);
 
-        for (Plane plane : planes) {
-            drawPlane(plane);
-        }
-
-        for (int i = 0; i < MAZE_HEIGHT + 1; i++) {
-            for (int j = 0; j < MAZE_WIDTH; j++) {
-                if (maze.isHorizontalMark(i, j)) {
-                    System.out.printf("build horizontal mark (%d, %d)\n", i, j);
-                    drawObject(square_xy, noTex, modelHorizontalMark[i][j], 0);
-                }
-            }
-        }
-
-        for (int i = 0; i < MAZE_HEIGHT; i++) {
-            for (int j = 0; j < MAZE_WIDTH + 1; j++) {
-                if (maze.isVerticalMark(i, j)) {
-                    System.out.printf("build vertical mark (%d, %d)\n", i, j);
-                    drawObject(square_yz, noTex, modelVerticalMark[i][j], 0);
-                }
-            }
-        }
     }
 
     @Override
@@ -462,60 +424,13 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         Util.checkGlError("drawObject");
     }
 
-    private void drawPlane(Plane plane) {
-        float[] modelTarget = new float[16];
-        Matrix.setIdentityM(modelTarget, 0);
-        Matrix.translateM(modelTarget, 0, plane.getCenter().getX(), plane.getCenter().getY(), plane.getCenter().getZ());
-        Matrix.rotateM(modelTarget, 0, plane.getRotateDegree(), plane.getRotateDirection().getX(), plane.getRotateDirection().getY(), plane.getRotateDirection().getZ());
-        Matrix.scaleM(modelTarget, 0, plane.getSize().getX(), plane.getSize().getY(), plane.getSize().getZ());
-        Matrix.multiplyMM(modelView, 0, view, 0, modelTarget, 0);
-        Matrix.multiplyMM(modelViewProjection, 0, perspective, 0, modelView, 0);
-        GLES20.glUseProgram(objectProgram);
-        GLES20.glUniformMatrix4fv(objectModelViewProjectionParam, 1, false, modelViewProjection, 0);
-        plane.getTexture().bind();
-        square_xy.draw();
-        Util.checkGlError("drawPlane");
-    }
-
     /**
      * Called when the Cardboard trigger is pulled.
      */
     @Override
     public void onCardboardTrigger() {
-        long nowTimeMillis = System.currentTimeMillis();
-        if (nowTimeMillis - lastClickTimeMillis < DOUBLE_CLICK_INTERVAL_LIMIT) {
-            createWarningPlane();
-        }
-        lastClickTimeMillis = nowTimeMillis;
     }
 
-    private void createWarningPlane() {
-        int r = cameraPosition.getNowRow();
-        int c = cameraPosition.getNowCol();
-        float dx = headDirection[0];
-        float dz = headDirection[2];
-        int ret = 0;
-        if (Math.abs(dx) > Math.abs(dz)) {
-            if (dx < 0) {
-                ret = maze.updateVerticalMark(r, c);
-            } else {
-                ret = maze.updateVerticalMark(r, c + 1);
-            }
-        } else {
-            if (dz < 0) {
-                ret = maze.updateHorizontalMark(r, c);
-            } else {
-                ret = maze.updateHorizontalMark(r + 1, c);
-            }
-        }
-        if (ret == 1) {
-            successSourceId = gvrAudioEngine.createStereoSound(BUILD_SUCCESS);
-            gvrAudioEngine.playSound(successSourceId, false /* looping disabled */);
-        } else if (ret == 2) {
-            successSourceId = gvrAudioEngine.createStereoSound(BUILD_FAIL);
-            gvrAudioEngine.playSound(successSourceId, false /* looping disabled */);
-        }
-    }
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
