@@ -30,9 +30,10 @@ import com.google.vr.sdk.base.GvrView;
 import com.google.vr.sdk.base.HeadTransform;
 import com.google.vr.sdk.base.Viewport;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Random;
-import java.util.Scanner;
 
 import javax.microedition.khronos.egl.EGLConfig;
 
@@ -226,26 +227,29 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private void initAudio() {
         hrir_l = new float[25][50][100];
         hrir_r = new float[25][50][100];
-        long s = System.currentTimeMillis();
-        Scanner scanner = new Scanner(getResources().openRawResource(R.raw.hrir_l));
-        for (int k = 0; k < 100; k++) {
-            for (int j = 0; j < 50; j++) {
-                for (int i = 0; i < 25; i++) {
-                    hrir_l[i][j][k] = scanner.nextFloat();
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.hrir_l)));
+            String[] strNums = bufferedReader.readLine().split("\\s");
+            for (int k = 0, cnt = 0; k < 100; k++) {
+                for (int j = 0; j < 50; j++) {
+                    for (int i = 0; i < 25; i++, cnt++) {
+                        hrir_l[i][j][k] = Float.parseFloat(strNums[cnt]);
+                    }
                 }
             }
-        }
-        scanner = new Scanner(getResources().openRawResource(R.raw.hrir_r));
-        for (int k = 0; k < 100; k++) {
-            for (int j = 0; j < 50; j++) {
-                for (int i = 0; i < 25; i++) {
-                    hrir_r[i][j][k] = scanner.nextFloat();
+            bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.hrir_r)));
+            strNums = bufferedReader.readLine().split("\\s");
+            for (int k = 0, cnt = 0; k < 100; k++) {
+                for (int j = 0; j < 50; j++) {
+                    for (int i = 0; i < 25; i++, cnt++) {
+                        hrir_r[i][j][k] = Float.parseFloat(strNums[cnt]);
+                    }
                 }
             }
-        }
-        long t = System.currentTimeMillis();
-        long d = t - s;
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
