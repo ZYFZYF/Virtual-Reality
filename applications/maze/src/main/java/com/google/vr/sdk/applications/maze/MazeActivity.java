@@ -68,7 +68,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     // yaw will be within [-MAX_YAW, MAX_YAW] and pitch will be within [-MAX_PITCH, MAX_PITCH].
     private static final float MAX_YAW = 100.0f;
     private static final float MAX_PITCH = 25.0f;
-    private static final int FRAME_SAMPLES = 1024;
+    private static final int FRAME_SAMPLES = 512;
     private static final int TOTAL_SAMPLES = 120000;
     private static final int SAMPLE_RATE = 22050;
     private static final String[] OBJECT_VERTEX_SHADER_CODE =
@@ -277,7 +277,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
             e.printStackTrace();
         }
         int minBufferSize = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
-        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT, minBufferSize * 4, AudioTrack.MODE_STREAM);
+        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT, minBufferSize * 4 * 2, AudioTrack.MODE_STREAM);
     }
 
     private void playAudio(float[] left, float[] right) {

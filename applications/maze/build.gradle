@@ -40,4 +40,5 @@ dependencies {
     // Obj - a simple Wavefront OBJ file loader
     // https://github.com/javagl/Obj
     implementation 'de.javagl:obj:0.2.1'
+    implementation files('libs/JTransforms-3.1-with-dependencies.jar')
 }
