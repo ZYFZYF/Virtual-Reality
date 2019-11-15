@@ -2,8 +2,8 @@ package com.google.vr.sdk.applications.maze;
 
 import org.jtransforms.fft.FloatFFT_1D;
 
-public class FFT {
-    private static float[] multiply(float[] x, float[] y, int length) {
+public class Convolve {
+    private static float[] FFT(float[] x, float[] y, int length) {
         FloatFFT_1D floatFFT_1D = new FloatFFT_1D(length);
         float[] new_x = new float[2 * length];
         for (int i = 0; i < length; i++) {
@@ -43,12 +43,29 @@ public class FFT {
         return z;
     }
 
+    static float[] bruteForce(float[] x, float[] y, int length) {
+        float[] z = new float[length];
+        for (int i = 0; i < length; i++) {
+            z[i] = 0;
+            for (int j = Math.max(0, i - y.length + 1); j <= Math.min(i, x.length - 1); j++) {
+                z[i] += x[j] * y[i - j];
+            }
+        }
+        return z;
+    }
+
     public static void main(String[] args) {
         float[] x = {1, 1, 1, 1, 1};
         float[] y = {1, 1, 1};
-        float[] z = multiply(x, y, 10);
+        float[] z = FFT(x, y, 10);
         for (int i = 0; i < z.length; i++) {
-            System.out.println(z[i]);
+            System.out.print(z[i] + " ");
         }
+        System.out.println();
+        float[] w = bruteForce(x, y, 10);
+        for (int i = 0; i < w.length; i++) {
+            System.out.print(w[i] + " ");
+        }
+        System.out.println();
     }
 }

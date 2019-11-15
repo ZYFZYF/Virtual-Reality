@@ -68,9 +68,10 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     // yaw will be within [-MAX_YAW, MAX_YAW] and pitch will be within [-MAX_PITCH, MAX_PITCH].
     private static final float MAX_YAW = 100.0f;
     private static final float MAX_PITCH = 25.0f;
-    private static final int FRAME_SAMPLES = 512;
+    private static final int FRAME_SAMPLES = 500;
     private static final int TOTAL_SAMPLES = 120000;
     private static final int SAMPLE_RATE = 22050;
+    private static final int CONVOLVE_SIZE = 100;
     private static final String[] OBJECT_VERTEX_SHADER_CODE =
             new String[]{
                     "uniform mat4 u_MVP;",
@@ -129,6 +130,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private float[] mosquitoR;
     private AudioTrack audioTrack;
     private int currentSample;
+    private Point mosquitoPosition;
 
 
     private float[] headRotation;
@@ -183,7 +185,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         Matrix.scaleM(modelCeil, 0, maxPoint.getX(), 0, maxPoint.getZ());
         modelMosquito = new float[16];
         Matrix.setIdentityM(modelMosquito, 0);
-        Point mosquitoPosition = maze.generateStartPoint();
+        mosquitoPosition = maze.generateStartPoint();
+        mosquitoPosition.setY(mosquitoPosition.getY() - 0.15f);
         Matrix.translateM(modelMosquito, 0, mosquitoPosition.getX(), mosquitoPosition.getY() - 0.15f, mosquitoPosition.getZ());
         Matrix.rotateM(modelMosquito, 0, 270, 1, 0, 0);
         Matrix.scaleM(modelMosquito, 0, 0.02f, 0.02f, 0.02f);
@@ -287,7 +290,6 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
             audio[i * 2] = left[i];
             audio[i * 2 + 1] = right[i];
         }
-        System.out.println("write samples is " + left.length * 2);
         audioTrack.write(audio, 0, left.length * 2, AudioTrack.WRITE_NON_BLOCKING);
         audioTrack.play();
     }
@@ -403,11 +405,35 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         Util.checkGlError("onNewFrame");
 
         //播放音频
-        int targetSameple = Math.min(TOTAL_SAMPLES, currentSample + FRAME_SAMPLES);
-        float[] audio_l = Arrays.copyOfRange(mosquitoL, currentSample, targetSameple);
-        float[] audio_r = Arrays.copyOfRange(mosquitoR, currentSample, targetSameple);
-        currentSample = targetSameple == TOTAL_SAMPLES ? 0 : targetSameple;
-        playAudio(audio_l, audio_r);
+        float azimuth, elevation;
+        int azi_index = 1;
+        int ele_index = 23;
+        float[] result_l = new float[FRAME_SAMPLES];
+        float[] result_r = new float[FRAME_SAMPLES];
+        int targetSample = Math.min(TOTAL_SAMPLES, currentSample + FRAME_SAMPLES);
+        long s = System.currentTimeMillis();
+        for (int start = currentSample; start < targetSample; start += CONVOLVE_SIZE) {
+            System.out.println("start is " + start + " and to " + (start + CONVOLVE_SIZE));
+            float[] audio_l = Arrays.copyOfRange(mosquitoL, start, start + CONVOLVE_SIZE);
+            float[] audio_r = Arrays.copyOfRange(mosquitoR, start, start + CONVOLVE_SIZE);
+            float[] hrir_l = Arrays.copyOf(hrirL[azi_index][ele_index], CONVOLVE_SIZE);
+            float[] hrir_r = Arrays.copyOf(hrirR[azi_index][ele_index], CONVOLVE_SIZE);
+            //fft算法
+            //float[] convove_result_l = Convolve.FFT(audio_l, hrir_l, CONVOLVE_SIZE * 2);
+            //float[] convove_result_r = Convolve.FFT(audio_r, hrir_r, CONVOLVE_SIZE * 2);
+            //暴力算法
+            float[] convove_result_l = Convolve.bruteForce(audio_l, hrir_l, CONVOLVE_SIZE);
+            float[] convove_result_r = Convolve.bruteForce(audio_r, hrir_r, CONVOLVE_SIZE);
+            //不卷积算法
+            //float[] convove_result_l = audio_l.clone();
+            //float[] convove_result_r = audio_r.clone();
+            System.arraycopy(convove_result_l, 0, result_l, start - currentSample, CONVOLVE_SIZE);
+            System.arraycopy(convove_result_r, 0, result_r, start - currentSample, CONVOLVE_SIZE);
+        }
+        long t = System.currentTimeMillis();
+        System.out.println("convove cost " + (t - s) + " millseconds");
+        currentSample = targetSample == TOTAL_SAMPLES ? 0 : targetSample;
+        playAudio(result_l, result_r);
     }
 
     private void checkSuccess() {
