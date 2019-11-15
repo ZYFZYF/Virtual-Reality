@@ -103,27 +103,22 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private boolean isMoving = false;
     private boolean success = false;
     private int objectProgram;
-
     private int objectPositionParam;
     private int objectUvParam;
     private int objectModelViewProjectionParam;
-
     private TexturedMesh wall, floor, mosquito;
     private Texture wallTex, floorTex, ceilTex, mosquitoTex;
-
     private float[] camera;
     private float[] view;
     private float[] headView;
     private float[] modelViewProjection;
     private float[] modelView;
     private float[] perspective;
-
     private float[] modelCeil;
     private float[] modelFloor;
     private float[] modelMosquito;
     private float[][][] modelHorizontalWall;
     private float[][][] modelVerticalWall;
-
     private float[][][] hrirL;
     private float[][][] hrirR;
     private float[] mosquitoL;
@@ -131,18 +126,13 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private AudioTrack audioTrack;
     private int currentSample;
     private Point mosquitoPosition;
-
-
     private float[] headRotation;
     private float[] headDirection;
-
     private GvrAudioEngine gvrAudioEngine;
     private volatile int sourceId = GvrAudioEngine.INVALID_ID;
     private volatile int successSourceId = GvrAudioEngine.INVALID_ID;
-
     private Maze maze;
     private CameraPosition cameraPosition;
-
 
     /**
      * Sets the view to our GvrView and initializes the transformation matrices we will use
@@ -213,7 +203,6 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
 
     }
-
 
     private void initializeGvrView() {
         setContentView(R.layout.common_ui);
@@ -405,13 +394,19 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         Util.checkGlError("onNewFrame");
 
         //播放音频
-        float azimuth, elevation;
-        int azi_index = 1;
-        int ele_index = 23;
+        Point headPosition = cameraPosition.getPos();
+        float[] mosquitoModelPosition = new float[]{mosquitoPosition.getX() - headPosition.getX(), mosquitoPosition.getY() - headPosition.getY(), mosquitoPosition.getZ() - headPosition.getZ(), 1};
+        float[] mosquitoViewPosition = new float[4];
+        Matrix.multiplyMV(mosquitoViewPosition, 0, headView, 0, mosquitoModelPosition, 0);
+        float[] sphere = new float[3];
+        Util.convertRectangleToSphere(mosquitoViewPosition, sphere);
+        System.out.println("azi is " + sphere[2] + " and ele is " + sphere[1]);
+        int azi_index = Util.getNearestAzimuthIndex(sphere[2]);
+        int ele_index = Util.getNearestElevationIndex(sphere[1]);
+        //确定了hrir的位置之后进行卷积计算来准备音频
         float[] result_l = new float[FRAME_SAMPLES];
         float[] result_r = new float[FRAME_SAMPLES];
         int targetSample = Math.min(TOTAL_SAMPLES, currentSample + FRAME_SAMPLES);
-        long s = System.currentTimeMillis();
         for (int start = currentSample; start < targetSample; start += CONVOLVE_SIZE) {
             System.out.println("start is " + start + " and to " + (start + CONVOLVE_SIZE));
             float[] audio_l = Arrays.copyOfRange(mosquitoL, start, start + CONVOLVE_SIZE);
@@ -430,9 +425,8 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
             System.arraycopy(convove_result_l, 0, result_l, start - currentSample, CONVOLVE_SIZE);
             System.arraycopy(convove_result_r, 0, result_r, start - currentSample, CONVOLVE_SIZE);
         }
-        long t = System.currentTimeMillis();
-        System.out.println("convove cost " + (t - s) + " millseconds");
         currentSample = targetSample == TOTAL_SAMPLES ? 0 : targetSample;
+        //播放准备好的音频
         playAudio(result_l, result_r);
     }
 

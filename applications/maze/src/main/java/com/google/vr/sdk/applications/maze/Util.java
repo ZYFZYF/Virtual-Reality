@@ -33,6 +33,16 @@ import static android.opengl.GLU.gluErrorString;
      * Debug builds should fail quickly. Release versions of the app should have this disabled.
      */
     private static final boolean HALT_ON_GL_ERROR = true;
+    private static float[] azimuths = {-80, -65, -55, -45, -40, -35, -30, -25, -20, -15, -10, -5, 0, 5, 10, 15, 20, 25, 30, 35, 45, 55, 65, 80};
+    private static float[] elevations;
+    private static float PI = (float) Math.acos(-1.0f);
+
+    static {
+        elevations = new float[50];
+        for (int i = 0; i < 50; i++) {
+            elevations[i] = -45 + 5.625f * i;
+        }
+    }
 
     /**
      * Class only contains static methods.
@@ -129,5 +139,49 @@ import static android.opengl.GLU.gluErrorString;
             }
             System.out.println();
         }
+    }
+
+    static void convertRectangleToSphere(float[] rectangle, float[] sphere) {
+        //纯靠样例测出来公式......
+        sphere[0] = (float) Math.sqrt(rectangle[0] * rectangle[0] + rectangle[1] * rectangle[1] + rectangle[2] * rectangle[2]);
+        sphere[1] = (float) Math.atan2(rectangle[2], -rectangle[0]) * 180 / PI;
+        sphere[2] = (float) Math.asin(rectangle[1] / sphere[0]) * 180 / PI;
+        if (rectangle[2] < 0) {
+            if (sphere[1] > 0) {
+                sphere[1] -= 180;
+            } else {
+                sphere[1] += 180;
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        float[] x = new float[]{(float) 0, 0, 1, 1};
+        float[] y = new float[4];
+        convertRectangleToSphere(x, y);
+        System.out.println(y[1] + " " + y[2]);
+        System.out.println(PI);
+        System.out.println(getNearestAzimuthIndex(y[2]));
+        System.out.println(getNearestElevationIndex(y[1]));
+    }
+
+    static private int getNearestIndex(float[] array, float val) {
+        int ind = 0;
+        float min = Math.abs(array[0] - val);
+        for (int i = 0; i < array.length; i++) {
+            if (Math.abs(array[i] - val) < min) {
+                min = Math.abs(array[i] - val);
+                ind = i;
+            }
+        }
+        return ind;
+    }
+
+    public static int getNearestAzimuthIndex(float azimuth) {
+        return getNearestIndex(azimuths, azimuth);
+    }
+
+    public static int getNearestElevationIndex(float elevation) {
+        return getNearestIndex(elevations, elevation);
     }
 }
