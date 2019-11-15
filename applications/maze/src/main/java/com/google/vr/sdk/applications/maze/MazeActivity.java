@@ -16,6 +16,9 @@
 
 package com.google.vr.sdk.applications.maze;
 
+import android.media.AudioFormat;
+import android.media.AudioManager;
+import android.media.AudioTrack;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Bundle;
@@ -33,6 +36,7 @@ import com.google.vr.sdk.base.Viewport;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.Random;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -64,6 +68,9 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     // yaw will be within [-MAX_YAW, MAX_YAW] and pitch will be within [-MAX_PITCH, MAX_PITCH].
     private static final float MAX_YAW = 100.0f;
     private static final float MAX_PITCH = 25.0f;
+    private static final int FRAME_SAMPLES = 1024;
+    private static final int TOTAL_SAMPLES = 120000;
+    private static final int SAMPLE_RATE = 22050;
     private static final String[] OBJECT_VERTEX_SHADER_CODE =
             new String[]{
                     "uniform mat4 u_MVP;",
@@ -116,10 +123,12 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private float[][][] modelHorizontalWall;
     private float[][][] modelVerticalWall;
 
-    private float[][][] hrir_l;
-    private float[][][] hrir_r;
-    private float[] mosquito_l;
-    private float[] mosquito_r;
+    private float[][][] hrirL;
+    private float[][][] hrirR;
+    private float[] mosquitoL;
+    private float[] mosquitoR;
+    private AudioTrack audioTrack;
+    private int currentSample;
 
 
     private float[] headRotation;
@@ -227,16 +236,18 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     }
 
     private void initAudio() {
+        //现在播放到的采样点
+        currentSample = 0;
         //读取hrir数据和mosquito数据
-        hrir_l = new float[25][50][100];
-        hrir_r = new float[25][50][100];
+        hrirL = new float[25][50][100];
+        hrirR = new float[25][50][100];
         try {
             BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.hrir_l)));
             String[] strNums = bufferedReader.readLine().split("\\s");
             for (int k = 0, cnt = 0; k < 100; k++) {
                 for (int j = 0; j < 50; j++) {
                     for (int i = 0; i < 25; i++, cnt++) {
-                        hrir_l[i][j][k] = Float.parseFloat(strNums[cnt]);
+                        hrirL[i][j][k] = Float.parseFloat(strNums[cnt]);
                     }
                 }
             }
@@ -245,29 +256,41 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
             for (int k = 0, cnt = 0; k < 100; k++) {
                 for (int j = 0; j < 50; j++) {
                     for (int i = 0; i < 25; i++, cnt++) {
-                        hrir_r[i][j][k] = Float.parseFloat(strNums[cnt]);
+                        hrirR[i][j][k] = Float.parseFloat(strNums[cnt]);
                     }
                 }
             }
             bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.mosquito_l)));
             strNums = bufferedReader.readLine().split("\\s");
-            mosquito_l = new float[strNums.length];
+            mosquitoL = new float[strNums.length];
             for (int i = 0; i < strNums.length; i++) {
-                mosquito_l[i] = Float.parseFloat(strNums[i]);
+                mosquitoL[i] = Float.parseFloat(strNums[i]);
             }
 
             bufferedReader = new BufferedReader(new InputStreamReader(getResources().openRawResource(R.raw.mosquito_r)));
             strNums = bufferedReader.readLine().split("\\s");
-            mosquito_r = new float[strNums.length];
+            mosquitoR = new float[strNums.length];
             for (int i = 0; i < strNums.length; i++) {
-                mosquito_r[i] = Float.parseFloat(strNums[i]);
+                mosquitoR[i] = Float.parseFloat(strNums[i]);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        int minBufferSize = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
+        audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT, minBufferSize * 4, AudioTrack.MODE_STREAM);
     }
 
+    private void playAudio(float[] left, float[] right) {
+        assert (left.length == right.length);
+        float[] audio = new float[left.length + right.length];
+        for (int i = 0; i < left.length; i++) {
+            audio[i * 2] = left[i];
+            audio[i * 2 + 1] = right[i];
+        }
+        System.out.println("write samples is " + left.length * 2);
+        audioTrack.write(audio, 0, left.length * 2, AudioTrack.WRITE_NON_BLOCKING);
+        audioTrack.play();
+    }
 
     @Override
     public void onPause() {
@@ -352,6 +375,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
      */
     @Override
     public void onNewFrame(HeadTransform headTransform) {
+        System.out.println("new frame is " + System.currentTimeMillis());
         if (isMoving && System.currentTimeMillis() - lastClickTimeMillis > DOUBLE_CLICK_INTERVAL_LIMIT) {
             if (!cameraPosition.move(headDirection[0] * STEP_LENGTH, headDirection[1] * STEP_LENGTH, headDirection[2] * STEP_LENGTH)) {
                 long nowTime = System.currentTimeMillis();
@@ -378,7 +402,12 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
 
         Util.checkGlError("onNewFrame");
 
-        checkSuccess();
+        //播放音频
+        int targetSameple = Math.min(TOTAL_SAMPLES, currentSample + FRAME_SAMPLES);
+        float[] audio_l = Arrays.copyOfRange(mosquitoL, currentSample, targetSameple);
+        float[] audio_r = Arrays.copyOfRange(mosquitoR, currentSample, targetSameple);
+        currentSample = targetSameple == TOTAL_SAMPLES ? 0 : targetSameple;
+        playAudio(audio_l, audio_r);
     }
 
     private void checkSuccess() {
