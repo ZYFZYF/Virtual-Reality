@@ -34,7 +34,7 @@ task clean(type: Delete) {
 
 // The dependencies for NDK builds live inside the .aar files so they need to
 // be extracted before NDK targets can build.
-task extractNdk(type: Copy)  {
+task extractNdk(type: Copy) {
     from zipTree("${project.rootDir}/libraries/sdk-base-1.190.0.aar")
     into "${project.rootDir}/libraries/"
     include "headers/vr/gvr/capi/**/*h"
