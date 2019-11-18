@@ -135,6 +135,7 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
     private Maze maze;
     private CameraPosition cameraPosition;
     private MosquitoPosition mosquitoPosition;
+    private int minBufferSize;
 
     /**
      * Sets the view to our GvrView and initializes the transformation matrices we will use
@@ -267,11 +268,12 @@ public class MazeActivity extends GvrActivity implements GvrView.StereoRenderer 
         } catch (IOException e) {
             e.printStackTrace();
         }
-        int minBufferSize = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
+        minBufferSize = AudioTrack.getMinBufferSize(SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT);
         audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT, minBufferSize * 4 * 2, AudioTrack.MODE_STREAM);
     }
 
     private void playAudio(float[] left, float[] right) {
+        //audioTrack = new AudioTrack(AudioManager.STREAM_MUSIC, SAMPLE_RATE, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_FLOAT, minBufferSize * 4 * 2, AudioTrack.MODE_STATIC);
         assert (left.length == right.length);
         float[] audio = new float[left.length + right.length];
         for (int i = 0; i < left.length; i++) {
