@@ -45,10 +45,25 @@ public class Convolve {
 
     static float[] bruteForce(float[] x, float[] y, int length) {
         float[] z = new float[length];
+        //圆卷积
+//        for (int i = 0; i < length; i++) {
+//            z[i] = 0;
+//            for (int j = 0; j <= x.length - 1; j++) {
+//                z[i] += x[j] * y[i - j < 0 ? i - j + y.length : i - j];
+//            }
+//        }
+        //正常卷积
+//        for (int i = 0; i < length; i++) {
+//            z[i] = 0;
+//            for (int j = Math.max(0, i - y.length + 1); j <= Math.min(i, x.length - 1); j++) {
+//                z[i] += x[j] * y[i - j];
+//            }
+//        }
+        //用到后面的信息
         for (int i = 0; i < length; i++) {
             z[i] = 0;
-            for (int j = Math.max(0, i - y.length + 1); j <= Math.min(i, x.length - 1); j++) {
-                z[i] += x[j] * y[i - j];
+            for (int j = 0; j < length; j++) {
+                z[i] += x[j + i] * y[y.length - j - 1];
             }
         }
         return z;
